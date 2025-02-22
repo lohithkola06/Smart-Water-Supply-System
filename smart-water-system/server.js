@@ -8,16 +8,24 @@ app.use(bodyParser.json());
 app.use(cors());
 
 // Connect to MQTT Broker
-const mqttClient = mqtt.connect("mqtt://192.168.179.134");
+const mqttClient = mqtt.connect("mqtt://localhost");
 
 mqttClient.on("connect", () => {
     console.log("Connected to MQTT Broker");
 });
 
-// API Endpoint to Get Sensor Data
+// API Endpoint to Get Water Level Data from Arduino via MQTT
 app.get("/water-level", (req, res) => {
-    // Simulated response for now
-    res.json({ level: "75%", flow: "2.3L/min", status: "Normal" });
+    mqttClient.subscribe("water/sensor", (err) => {
+        if (!err) {
+            mqttClient.once("message", (topic, message) => {
+                const data = JSON.parse(message.toString());
+                res.json({ level: data.level, flow: data.flow, status: data.status });
+            });
+        } else {
+            res.status(500).json({ error: "Failed to subscribe to MQTT topic" });
+        }
+    });
 });
 
 // API Endpoint to Control Water Valve
